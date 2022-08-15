@@ -2,8 +2,8 @@
   emonTH V2 Low Power SI7021 Humidity & Temperature, DS18B20 Temperature & Pulse counting Node Example
   - Using RFM69 Native format & emonEProm library
 
-  Si7021 = internal temperature & Humidity
-  DS18B20 = External temperature
+  Si7021 = internal temperature & Humidity - DISABLED ADP Aug22 (running on V1.5 hardware)
+  DS18B20 = INTERNAL temperature
 
 
   Part of the openenergymonitor.org project
@@ -119,7 +119,7 @@ const byte busyTimeout = 0;                                            // Time i
                                                                        //   inhibit channel occupancy check (conserves battery life but increases the risk of lost messages)
                                                                        //   Recommended value when used: 15 (ms)
 
-const int TEMPERATURE_PRECISION = 11;                                  // DS18B20 resolution 9,10,11 or 12bit corresponding to (0.5, 0.25, 0.125, 0.0625 degrees C LSB),
+const int TEMPERATURE_PRECISION = 9;                                  // DS18B20 resolution 9,10,11 or 12bit corresponding to (0.5, 0.25, 0.125, 0.0625 degrees C LSB),
                                                                        // lower resolution means lower power
                                                                        // 9 (93.8ms), 10 (187.5ms), 11 (375ms) or 12 (750ms) bits equal to resolution of 0.5C, 0.25C, 0.125C and 0.0625C
 #define ASYNC_DELAY 375                                                // 9bit requires 95ms, 10bit 187ms, 11bit 375ms and 12bit resolution takes 750ms
@@ -130,7 +130,7 @@ ISR(WDT_vect) { Sleepy::watchdogEvent(); }                             // Attach
 #include <Wire.h>
 #include <SI7021.h>
 SI7021 SI7021_sensor;
-bool SI7021_status;
+bool SI7021_status = 0;
 
 // Hardwired emonTH pin allocations
 const byte DS18B20_PWR =    5;
@@ -139,7 +139,7 @@ const byte BATT_ADC =       1;
 const byte DIP_switch1 =    7;
 const byte DIP_switch2 =    8;
 const byte pulse_count_pin =3;                                         // INT 1 / Dig 3 Screw Terminal Block Number 4
-#define ONE_WIRE_BUS       17
+#define ONE_WIRE_BUS       19
 const byte DHT22_PWR =      6;                                         // Not used in emonTH V2.0, 10K resistor R1 connects DHT22 pins
 const byte DHT22_DATA =    16;                                         // Not used in emonTH V2.0, 10K resistor R1 connects DHT22 pins.
 
@@ -238,6 +238,8 @@ void setup()
   //################################################################################################################################
   Serial.println("Int SI7021..");
 
+
+  /*
   // check if the I2C lines are HIGH
   if (digitalRead(SDA) == HIGH || digitalRead(SCL) == HIGH)
   {
@@ -257,17 +259,18 @@ void setup()
       SI7021_status=0;
       Serial.println("SI7021 Error");
     }
+  
   }
   else
     Serial.println("SI7021 Error");
+  */
 
   //################################################################################################################################
   // Setup and for presence of DS18B20
   //################################################################################################################################
   digitalWrite(DS18B20_PWR, HIGH); delay(50);
   sensors.begin();
-  sensors.setWaitForConversion(false);                                 // disable automatic temperature conversion to reduce time spent awake, 
-                                                                       // conversion will be implemented manually in sleeping 
+  sensors.setWaitForConversion(false);  
                                                                        // http://harizanov.com/2013/07/optimizing-ds18b20-code-for-low-power-applications/
 
   if (EEProm.allAddresses[0][0] == 0x00)                               // No sensor addresses recorded in EEPROM
@@ -331,6 +334,9 @@ void setup()
   {
     digitalWrite(LED,LOW);                                             // turn off LED to indicate end setup
   }
+
+      digitalWrite(LED,LOW);                                             // turn off LED to indicate end setup
+
 } // end of setup
 
 
@@ -370,7 +376,7 @@ void loop()
       digitalWrite(DS18B20_PWR, LOW);
       if ((temp < 125.0) && (temp > -40.0))
       {
-        emonth.temp_external = (temp*10);
+        emonth.temp = (temp*10);
       }
     }
 
@@ -386,6 +392,8 @@ void loop()
     // See more https://community.openenergymonitor.org/t/emonth-battery-measurement-accuracy/1317
     //emonth.battery=int(analogRead(BATT_ADC)*3.222);
 
+/*
+    Disabled - ADP - This is running on a v1.0 EMONTH without a SI7021.
     // Read SI7021
     // Read from SI7021 SPI temp & humidity sensor
     if (SI7021_status==1)
@@ -397,7 +405,7 @@ void loop()
       power_twi_disable();
     }
 
-
+*/
     // Send data via RF
     if (EEProm.rf_on & 0x01)
     {
